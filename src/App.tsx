@@ -1,39 +1,83 @@
-import { useEffect, useState } from "react";
-import type { Schema } from "../amplify/data/resource";
-import { generateClient } from "aws-amplify/data";
+import React from 'react';
+import { uploadData, isCancelError} from 'aws-amplify/storage';
+import { FileUploader } from '@aws-amplify/ui-react-storage';
 
-const client = generateClient<Schema>();
+import '@aws-amplify/ui-react/styles.css';
+
+
+export const DefaultFileUploaderExample = () => {
+  return (
+    <FileUploader
+      acceptedFileTypes={['image/*']}
+      path="public/"
+      maxFileCount={1}
+      isResumable
+    />
+  );
+};
+
+try {
+  const result = await uploadData({
+    path: "album/2024/1.jpg",
+    // Alternatively, path: ({identityId}) => `album/${identityId}/1.jpg`
+    data: file,
+    options: {
+      bucket: 'firstBucket'
+    }
+  }).result;
+  console.log('Succeeded: ', result);
+} catch (error) {
+  console.log('Error : ', error);
+}
+
+const monitorUpload = async () => {
+  try {
+    const result = await uploadData({
+      path: "album/2024/1.jpg",
+      // Alternatively, path: ({identityId}) => `album/${identityId}/1.jpg`
+      data: file,
+      options: {
+        onProgress: ({ transferredBytes, totalBytes }) => {
+          if (totalBytes) {
+            console.log(
+              `Upload progress ${Math.round(
+                (transferredBytes / totalBytes) * 100
+              )} %`
+            );
+          }
+        },
+      },
+    }).result;
+    console.log("Path from Response: ", result.path);
+  } catch (error) {
+    console.log("Error : ", error);
+  }
+  
+}
+
+
 
 function App() {
-  const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
+  const [file, setFile] = React.useState();
 
-  useEffect(() => {
-    client.models.Todo.observeQuery().subscribe({
-      next: (data) => setTodos([...data.items]),
-    });
-  }, []);
-
-  function createTodo() {
-    client.models.Todo.create({ content: window.prompt("Todo content") });
-  }
+  const handleChange = (event: any) => {
+      setFile(event.target.files[0]);
+  };
 
   return (
-    <main>
-      <h1>My todos</h1>
-      <button onClick={createTodo}>+ new</button>
-      <ul>
-        {todos.map((todo) => (
-          <li key={todo.id}>{todo.content}</li>
-        ))}
-      </ul>
       <div>
-        🥳 App successfully hosted. Try creating a new todo.
-        <br />
-        <a href="https://docs.amplify.aws/react/start/quickstart/#make-frontend-updates">
-          Review next step of this tutorial.
-        </a>
+          <input type="file" onChange={handleChange} />
+          <button
+              onClick={() =>
+                  uploadData({
+                      path: `photos/${file.name}`,
+                      data: file,
+                  })
+              }
+          >
+              Upload
+          </button>
       </div>
-    </main>
   );
 }
 
