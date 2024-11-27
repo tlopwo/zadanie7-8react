@@ -1,39 +1,41 @@
-import { useEffect, useState } from "react";
+import React from "react";
 import type { Schema } from "../amplify/data/resource";
 import { generateClient } from "aws-amplify/data";
 
 const client = generateClient<Schema>();
 
 function App() {
-  const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
+  const [file, setFile] = React.useState<File | undefined>();
 
-  useEffect(() => {
-    client.models.Todo.observeQuery().subscribe({
-      next: (data) => setTodos([...data.items]),
-    });
-  }, []);
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      setFile(event.target.files[0]);
+    }
+  };
 
-  function createTodo() {
-    client.models.Todo.create({ content: window.prompt("Todo content") });
-  }
+  const handleUpload = async () => {
+    if (!file) {
+      alert("Please select a file to upload");
+      return;
+    }
+
+    try {
+      await client.uploadData({
+        path: `picture-submissions/${file.name}`,
+        data: file,
+      });
+      alert("File uploaded successfully!");
+    } catch (error) {
+      console.error("Upload failed", error);
+      alert("File upload failed. Please try again.");
+    }
+  };
 
   return (
-    <main>
-      <h1>My todos</h1>
-      <button onClick={createTodo}>+ new</button>
-      <ul>
-        {todos.map((todo) => (
-          <li key={todo.id}>{todo.content}</li>
-        ))}
-      </ul>
-      <div>
-        🥳 App successfully hosted. Try creating a new todo.
-        <br />
-        <a href="https://docs.amplify.aws/react/start/quickstart/#make-frontend-updates">
-          Review next step of this tutorial.
-        </a>
-      </div>
-    </main>
+    <div>
+      <input type="file" onChange={handleChange} />
+      <button onClick={handleUpload}>Upload</button>
+    </div>
   );
 }
 
